@@ -12,6 +12,7 @@ const MIN_SIDE = 10; // a layer smaller than this is not worth stopping at
 const ARRIVE_MS = 700; // the longest a call waits for its pointer to reach the first layer
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 /** The layers a call is about, from its arguments, in the order it names them. */
 const idsOf = (args) => [...new Set([args.targetNodeId, args.nodeId, ...(args.nodeIds ?? []), ...(args.updates ?? []).flatMap((u) => u.nodeIds ?? [u.nodeId]), ...(args.nodes ?? []).map((n) => n.id), ...(args.moves ?? []).map((m) => m.nodeId)].filter((id) => typeof id === "string"))];
@@ -28,7 +29,7 @@ export function mountAgentCursor(canvas, store) {
   /** The middle of a layer, as a place in the file. */
   const pointOf = (element) => {
     const box = canvas.getBoundingClientRect(), r = element.getBoundingClientRect(), z = store.ui.zoom;
-    return { x: (r.left - box.left + r.width * 0.2 - store.ui.panX) / z, y: (r.top - box.top + r.height * 0.3 - store.ui.panY) / z };
+    return { x: (r.left - box.left + r.width / 2 - store.ui.panX) / z, y: (r.top - box.top + r.height / 2 - store.ui.panY) / z };
   };
   const hash = (name) => [...name].reduce((value, char) => (value * 31 + char.charCodeAt(0)) | 0, 0);
 
@@ -64,9 +65,8 @@ export function mountAgentCursor(canvas, store) {
       const frame = (now) => {
         if (mine !== p.walk) return resolve();
         const elapsed = now - start;
-        const t = Math.min(1, elapsed / travelMs);
-        const eased = first ? 1 - Math.pow(1 - t, 2) : t, u = 1 - eased;
-        set(p, { x: u * u * from.x + 2 * u * eased * mid.x + eased * eased * end.x, y: u * u * from.y + 2 * u * eased * mid.y + eased * eased * end.y });
+        const t = ease(Math.min(1, elapsed / travelMs)), u = 1 - t;
+        set(p, { x: u * u * from.x + 2 * u * t * mid.x + t * t * end.x, y: u * u * from.y + 2 * u * t * mid.y + t * t * end.y });
         if (elapsed < travelMs) requestAnimationFrame(frame);
         else if (overshoot) {
           const settleStart = now;
@@ -96,7 +96,10 @@ export function mountAgentCursor(canvas, store) {
       await glide(p, stop, mine, first && i === 0);
       if (i === 0) arrived?.();
       if (mine !== p.walk) return;
-      if (i < stops.length - 1) await sleep(120 + Math.min(240, elements[i].getBoundingClientRect().width * elements[i].getBoundingClientRect().height / 4000));
+      if (i < stops.length - 1) {
+        const { width, height } = elements[i].getBoundingClientRect();
+        await sleep(120 + Math.min(240, width * height / 4000));
+      }
       if (mine !== p.walk) return;
     }
     p.quiet = setTimeout(() => { p.idle = true; p.element.classList.add("away"); }, IDLE_MS);
