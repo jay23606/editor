@@ -1,4 +1,4 @@
-﻿// The agents' pointers on the canvas, one for each agent, each in its own color (ui/agent-colors.js). A pointer is anchored to the design,
+// The agents' pointers on the canvas, one for each agent, each in its own color (ui/agent-colors.js). A pointer is anchored to the design,
 // not to the screen: where it is is a place in the file, so it stays on its layer when you pan, zoom, collapse the panels or resize the window. A pointer goes to the layers
 // a call is about, in the order the call names them, before the call runs, and after a call that made something it passes over
 // what it made, in the order it is drawn. It glides along a curve and stays where the work is, nothing random: it fades when
